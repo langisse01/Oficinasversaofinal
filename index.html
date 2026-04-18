@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoGest Pro - Gestão de Oficina</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --success: #27ae60;
+            --warning: #f1c40f;
+            --info: #9b59b6;
+            --light: #ecf0f1;
+            --dark: #2c3e50;
+        }
+
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; margin: 0; padding: 20px; }
+        .container { max-width: 1100px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        
+        /* Login Style */
+        #loginOverlay { position: fixed; top:0; left:0; width:100%; height:100%; background: var(--dark); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .login-box { background: white; padding: 30px; border-radius: 8px; width: 300px; text-align: center; }
+        
+        h1, h2 { color: var(--primary); border-bottom: 2px solid var(--secondary); padding-bottom: 10px; }
+        
+        .grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .full-width { grid-column: 1 / -1; }
+        
+        .checklist-section { background: #f9f9f9; padding: 15px; border-radius: 5px; border-left: 5px solid var(--secondary); margin: 10px 0; }
+        .checklist-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; font-size: 0.9em; }
+        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        
+        button { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.3s; margin-right: 5px; }
+        .btn-add { background: var(--success); color: white; width: 100%; font-size: 1.1em; margin-top: 10px; }
+        .btn-invoice { background: var(--warning); color: #000; font-size: 0.8em; }
+        .btn-guide { background: var(--info); color: white; font-size: 0.8em; }
+        .btn-report { background: var(--primary); color: white; }
+
+        .controls { background: var(--light); padding: 15px; border-radius: 4px; margin: 20px 0; display: flex; gap: 10px; align-items: flex-end; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #ddd; }
+        th { background: var(--primary); color: white; }
+
+        /* Estilos de Impressão */
+        #printArea { display: none; padding: 40px; border: 1px solid #ccc; }
+        .print-header { display: flex; justify-content: space-between; border-bottom: 2px solid #333; margin-bottom: 20px; }
+        .signature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; margin-top: 60px; text-align: center; }
+        .sig-line { border-top: 1px solid #000; padding-top: 10px; }
+
+        @media print {
+            .no-print { display: none !important; }
+            #printArea { display: block !important; }
+            body { background: white; padding: 0; }
+            .container { box-shadow: none; border: none; width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="loginOverlay">
+    <div class="login-box">
+        <h2>Acesso Restrito</h2>
+        <input type="text" id="userInput" placeholder="Utilizador (admin)" style="margin-bottom: 10px;">
+        <input type="password" id="passInput" placeholder="Senha (123456)" style="margin-bottom: 10px;">
+        <button class="btn-add" onclick="checkLogin()">Entrar</button>
+    </div>
+</div>
+
+<div class="container" id="mainContent" style="display:none;">
+    <div class="no-print">
+        <h1>🛠️ AutoGest Pro - Gestão de Oficina</h1>
+        
+        <section>
+            <h2>Novo Registo e Check-list</h2>
+            <form id="serviceForm" class="grid-form">
+                <div>
+                    <label>Proprietário:</label>
+                    <input type="text" id="proprietario" required>
+                </div>
+                <div>
+                    <label>Marca/Modelo:</label>
+                    <input type="text" id="marca" required>
+                </div>
+                <div>
+                    <label>Matrícula:</label>
+                    <input type="text" id="matricula" required>
+                </div>
+                <div>
+                    <label>Telemóvel:</label>
+                    <input type="tel" id="telemovel" required>
+                </div>
+                <div>
+                    <label>Data Entrada:</label>
+                    <input type="date" id="dataEntrada" required>
+                </div>
+                <div>
+                    <label>Tipo de Avaria:</label>
+                    <select id="tipoAvaria">
+                        <option value="Mecânica">Mecânica</option>
+                        <option value="Elétrica">Elétrica</option>
+                        <option value="Revisão">Revisão Geral</option>
+                        <option value="Pintura">Chapa/Pintura</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Custo Estimado (MT):</label>
+                    <input type="number" id="custo" step="0.01" required>
+                </div>
+
+                <div class="full-width checklist-section">
+                    <label>📋 Check-list de Entrada (Conformidade):</label>
+                    <div class="checklist-grid">
+                        <div>
+                            <label>Iluminação:</label>
+                            <select id="chkIluminacao">
+                                <option value="✅ Funcional">✅ Funcional</option>
+                                <option value="❌ Com Falhas">❌ Com Falhas</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Travões:</label>
+                            <select id="chkTravoes">
+                                <option value="✅ OK">✅ OK</option>
+                                <option value="❌ Necessita Reparo">❌ Necessita Reparo</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Combustível:</label>
+                            <select id="chkCombustivel">
+                                <option value="Reserva">Reserva</option>
+                                <option value="1/4">1/4</option>
+                                <option value="1/2">1/2</option>
+                                <option value="3/4">3/4</option>
+                                <option value="Cheio">Cheio</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="full-width">
+                    <label>Observações / Estado Geral / Peças:</label>
+                    <textarea id="descricao" placeholder="Descreva o estado detalhado da viatura na entrada..."></textarea>
+                </div>
+                <div class="full-width">
+                    <button type="submit" class="btn-add">Adicionar ao Sistema</button>
+                </div>
+            </form>
+        </section>
+
+        <hr>
+
+        <section>
+            <h2>Histórico e Relatórios</h2>
+            
+            <div class="controls">
+                <div style="flex-grow: 1;">
+                    <label>Filtrar Proprietário:</label>
+                    <input type="text" id="filterUser" placeholder="Procurar nome..." onkeyup="renderTable()">
+                </div>
+                <div>
+                    <label>Mês do Relatório:</label>
+                    <input type="month" id="reportMonth">
+                </div>
+                <button class="btn-report" onclick="generateMonthlyReport()">Relatório Mensal</button>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Proprietário</th>
+                        <th>Viatura</th>
+                        <th>Avaria</th>
+                        <th>Custo</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </section>
+    </div>
+
+    <div id="printArea">
+        <div class="print-header">
+            <div>
+                <h1 id="printTitle" style="border:none; margin:0;">DOCUMENTO</h1>
+                <p>Oficina AutoGest Pro - Assistência Técnica</p>
+            </div>
+            <div style="text-align: right;">
+                <p>Data: <span id="pDate"></span></p>
+                <p>Ref: #<span id="pRef"></span></p>
+            </div>
+        </div>
+        
+        <div id="printContent">
+            </div>
+
+        <div id="signatureArea" class="signature-grid">
+            <div>
+                <div class="sig-line">Assinatura do Funcionário</div>
+            </div>
+            <div>
+                <div class="sig-line">Assinatura do Proprietário</div>
+            </div>
+        </div>
+
+        <div class="no-print" style="margin-top: 40px; text-align: center;">
+            <button onclick="window.print()" style="background:var(--success); color:white; padding: 15px 30px;">Imprimir Agora</button>
+            <button onclick="location.reload()" style="background:var(--dark); color:white; padding: 15px 30px;">Fechar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let services = JSON.parse(localStorage.getItem('oficina_services')) || [];
+
+    function checkLogin() {
+        const u = document.getElementById('userInput').value;
+        const p = document.getElementById('passInput').value;
+        if(u === 'admin' && p === '123456') {
+            document.getElementById('loginOverlay').style.display = 'none';
+            document.getElementById('mainContent').style.display = 'block';
+        } else {
+            alert('Acesso negado!');
+        }
+    }
+
+    const form = document.getElementById('serviceForm');
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        
+        const newService = {
+            id: Math.floor(Math.random() * 90000) + 10000,
+            proprietario: document.getElementById('proprietario').value,
+            marca: document.getElementById('marca').value,
+            telemovel: document.getElementById('telemovel').value,
+            matricula: document.getElementById('matricula').value,
+            dataEntrada: document.getElementById('dataEntrada').value,
+            tipoAvaria: document.getElementById('tipoAvaria').value,
+            custo: document.getElementById('custo').value,
+            descricao: document.getElementById('descricao').value,
+            checklist: {
+                iluminacao: document.getElementById('chkIluminacao').value,
+                travoes: document.getElementById('chkTravoes').value,
+                combustivel: document.getElementById('chkCombustivel').value
+            }
+        };
+
+        services.push(newService);
+        localStorage.setItem('oficina_services', JSON.stringify(services));
+        form.reset();
+        renderTable();
+        alert('Registo efetuado!');
+    });
+
+    function renderTable() {
+        const filter = document.getElementById('filterUser').value.toLowerCase();
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+        
+        const filtered = services.filter(s => s.proprietario.toLowerCase().includes(filter));
+
+        filtered.forEach(s => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>${s.proprietario}<br><small>${s.telemovel}</small></td>
+                    <td>${s.marca} (<strong>${s.matricula}</strong>)</td>
+                    <td>${s.tipoAvaria}</td>
+                    <td>${parseFloat(s.custo).toFixed(2)} MT</td>
+                    <td>
+                        <button class="btn-guide" onclick="generateGuide(${s.id})">Guia de Entrada</button>
+                        <button class="btn-invoice" onclick="generateInvoice(${s.id})">Fatura</button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    // 1. GUIA DE ENTRADA (Comprovativo com assinaturas)
+    function generateGuide(id) {
+        const s = services.find(item => item.id === id);
+        if(!s) return;
+
+        document.getElementById('printTitle').innerText = "GUIA DE ENTRADA / CHECK-LIST";
+        document.getElementById('pDate').innerText = s.dataEntrada;
+        document.getElementById('pRef').innerText = s.id;
+        document.getElementById('signatureArea').style.display = "grid";
+
+        document.getElementById('printContent').innerHTML = `
+            <h3>Dados do Proprietário</h3>
+            <p><strong>Nome:</strong> ${s.proprietario} | <strong>Contacto:</strong> ${s.telemovel}</p>
+            
+            <h3>Dados da Viatura</h3>
+            <p><strong>Viatura:</strong> ${s.marca} | <strong>Matrícula:</strong> ${s.matricula}</p>
+            <p><strong>Tipo de Avaria:</strong> ${s.tipoAvaria}</p>
+            
+            <div style="background: #f1f1f1; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                <h4>✅ Check-list de Conformidade na Entrada</h4>
+                <p><strong>Iluminação:</strong> ${s.checklist.iluminacao}</p>
+                <p><strong>Travões/Sistema de Travagem:</strong> ${s.checklist.travoes}</p>
+                <p><strong>Nível de Combustível:</strong> ${s.checklist.combustivel}</p>
+            </div>
+
+            <h3>Observações de Entrada</h3>
+            <p style="border: 1px solid #ddd; padding: 10px; min-height: 80px;">${s.descricao || "Sem observações adicionais."}</p>
+            <p><small>* Este documento comprova o estado do veículo no ato da entrega à oficina.</small></p>
+        `;
+        window.print();
+    }
+
+    // 2. FATURA
+    function generateInvoice(id) {
+        const s = services.find(item => item.id === id);
+        if(!s) return;
+
+        document.getElementById('printTitle').innerText = "FATURA / RECIBO";
+        document.getElementById('pDate').innerText = new Date().toLocaleDateString();
+        document.getElementById('pRef').innerText = s.id;
+        document.getElementById('signatureArea').style.display = "none";
+
+        document.getElementById('printContent').innerHTML = `
+            <h3>Detalhes da Faturação</h3>
+            <p><strong>Cliente:</strong> ${s.proprietario}</p>
+            <p><strong>Viatura:</strong> ${s.marca} (${s.matricula})</p>
+            <p><strong>Serviço:</strong> ${s.tipoAvaria}</p>
+            <div style="background: #eee; padding: 30px; text-align: right; margin-top: 30px;">
+                <h1 style="margin:0;">TOTAL A PAGAR: ${parseFloat(s.custo).toLocaleString(undefined, {minimumFractionDigits: 2})} MT</h1>
+            </div>
+        `;
+        window.print();
+    }
+
+    // 3. RELATÓRIO MENSAL
+    function generateMonthlyReport() {
+        const month = document.getElementById('reportMonth').value;
+        if(!month) { alert("Selecione o mês!"); return; }
+
+        const filtered = services.filter(s => s.dataEntrada.startsWith(month));
+        let total = 0;
+        document.getElementById('printTitle').innerText = "RELATÓRIO MENSAL - " + month;
+        document.getElementById('signatureArea').style.display = "none";
+
+        let html = '<table style="width:100%; border-collapse:collapse; margin-top:20px;">' +
+                   '<tr style="background:#ddd;"><th>Data</th><th>Cliente</th><th>Matrícula</th><th>Valor</th></tr>';
+        
+        filtered.forEach(s => {
+            total += parseFloat(s.custo);
+            html += `<tr><td>${s.dataEntrada}</td><td>${s.proprietario}</td><td>${s.matricula}</td><td>${parseFloat(s.custo).toFixed(2)}</td></tr>`;
+        });
+        
+        html += `</table><h2 style="text-align:right;">Total: ${total.toFixed(2)} MT</h2>`;
+        document.getElementById('printContent').innerHTML = html;
+        window.print();
+    }
+
+    renderTable();
+</script>
+
+</body>
+</html>
